@@ -6,7 +6,8 @@
   "imageUrl": "",
   "name": "Transcode Download",
   "overview": "Download transcoded videos from Jellyfin via a background job API.",
-  "owner": "",
+  "owner": "dave01945",
+  "sourceUrl": "https://github.com/dave01945/Jellyfin.Plugin.TranscodeDownload",
   "targetAbi": "10.10.0.0",
   "timestamp": "2026-03-22T00:00:00Z",
   "version": "1.0.0.0"

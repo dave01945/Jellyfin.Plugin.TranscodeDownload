@@ -5,6 +5,10 @@ public sealed class JobStatusDto
 {
     public Guid JobId { get; init; }
     public Guid ItemId { get; init; }
+
+    /// <summary>Display name of the library item (e.g. episode or movie title).</summary>
+    public string ItemName { get; init; } = string.Empty;
+
     public DownloadJobState State { get; init; }
 
     /// <summary>Rough progress percentage 0–100. Null while state is Queued.</summary>

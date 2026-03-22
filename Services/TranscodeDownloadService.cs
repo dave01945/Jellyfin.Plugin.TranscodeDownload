@@ -19,6 +19,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
     {
         public Guid JobId { get; init; }
         public Guid ItemId { get; init; }
+        public string ItemName { get; init; } = string.Empty;
         public string OutputPath { get; init; } = string.Empty;
         public DateTimeOffset CreatedAt { get; init; }
 
@@ -118,13 +119,15 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
             Directory.CreateDirectory(outputDir);
 
             var jobId = Guid.NewGuid();
-            var outputPath = Path.Combine(outputDir, $"{jobId}.mp4");
+            var ext = (request.ContainerFormat ?? "mp4").ToLowerInvariant().TrimStart('.');
+            var outputPath = Path.Combine(outputDir, $"{jobId}.{ext}");
 
             // 4. Register job before launching so status is visible immediately.
             var job = new DownloadJob
             {
                 JobId = jobId,
                 ItemId = request.ItemId,
+                ItemName = item.Name ?? string.Empty,
                 OutputPath = outputPath,
                 CreatedAt = DateTimeOffset.UtcNow,
                 State = DownloadJobState.Running,
@@ -162,6 +165,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         {
             JobId = job.JobId,
             ItemId = job.ItemId,
+            ItemName = job.ItemName,
             State = job.State,
             ProgressPercent = job.ProgressPercent,
             OutputSizeBytes = sizeBytes,

@@ -55,11 +55,19 @@ public sealed class CreateJobRequest
     // ── Subtitles ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Zero-based subtitle stream index to mux as a soft subtitle track in the MP4 (mov_text).
+    /// Zero-based subtitle stream index to mux as a soft subtitle track in the output container (mov_text).
     /// -1 (default) = no subtitles.
     /// Note: image-based (PGS/VOBSUB) streams require burn-in via a separate video filter — not
     /// yet supported; use a text-based stream (SRT/ASS converted to mov_text).
     /// </summary>
     [Range(-1, int.MaxValue)]
     public int SubtitleStreamIndex { get; set; } = -1;
+
+    // ── Container ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Output container format. Accepted values: "mp4" (default), "mkv", "webm", "avi".
+    /// The chosen container must be compatible with the selected video/audio codecs.
+    /// </summary>
+    public string ContainerFormat { get; set; } = "mp4";
 }

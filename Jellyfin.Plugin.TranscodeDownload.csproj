@@ -7,6 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Jellyfin.Plugin.TranscodeDownload</AssemblyName>
     <RootNamespace>Jellyfin.Plugin.TranscodeDownload</RootNamespace>
+    <Company>dave01945</Company>
+    <RepositoryUrl>https://github.com/dave01945/Jellyfin.Plugin.TranscodeDownload</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/dave01945/Jellyfin.Plugin.TranscodeDownload</PackageProjectUrl>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!--

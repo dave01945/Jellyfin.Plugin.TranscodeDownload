@@ -1,3 +1,4 @@
+using System.IO;
 using Jellyfin.Plugin.TranscodeDownload.Models;
 using Jellyfin.Plugin.TranscodeDownload.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -128,8 +129,8 @@ public sealed class TranscodeDownloadController : ControllerBase
             DownloadJobState.Completed =>
                 // enableRangeProcessing: true — lets the client resume interrupted downloads
                 // and skip to any position without re-downloading from the beginning.
-                PhysicalFile(path!, "video/mp4",
-                    fileDownloadName: $"{id}.mp4",
+                PhysicalFile(path!, GetContentType(path!),
+                    fileDownloadName: Path.GetFileName(path!),
                     enableRangeProcessing: true),
 
             _ => // Failed, Cancelled
@@ -140,6 +141,17 @@ public sealed class TranscodeDownloadController : ControllerBase
                 }),
         };
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string GetContentType(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".mkv"  => "video/x-matroska",
+            ".webm" => "video/webm",
+            ".avi"  => "video/x-msvideo",
+            _       => "video/mp4",
+        };
 
     // ── DELETE /Plugins/TranscodeDownload/jobs/{id} ───────────────────────────
 

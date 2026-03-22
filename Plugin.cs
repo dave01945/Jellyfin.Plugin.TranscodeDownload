@@ -22,7 +22,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public static Plugin? Instance { get; private set; }
 
     /// <inheritdoc />
-    public override string Name => "TranscodeDownload";
+    public override string Name => "Transcode Download";
 
     /// <summary>
     /// Stable plugin GUID — never change this after initial deployment or Jellyfin will treat
