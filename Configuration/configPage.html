@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Transcode Download</title>
+</head>
+<body>
+<div id="TranscodeDownloadConfigPage"
+     data-role="page"
+     class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-select,emby-checkbox">
+
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="TranscodeDownloadConfigForm">
+
+                <div class="sectionTitleContainer flex align-items-center">
+                    <h2 class="sectionTitle">TranscodeDownload</h2>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="MaxConcurrentJobs">Max Concurrent Jobs</label>
+                    <input is="emby-input" type="number" id="MaxConcurrentJobs" min="1" />
+                    <div class="fieldDescription">Maximum simultaneous transcode jobs. Requests exceeding this limit receive HTTP 429.</div>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="OutputDirectory">Output Directory (optional)</label>
+                    <input is="emby-input" type="text" id="OutputDirectory" />
+                    <div class="fieldDescription">Override where transcoded MP4 files are written. Leave blank to use {TranscodePath}/downloads/.</div>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="JobRetentionMinutes">Job Retention (minutes)</label>
+                    <input is="emby-input" type="number" id="JobRetentionMinutes" min="1" />
+                    <div class="fieldDescription">Minutes before a completed or failed job is evicted from memory (and its file deleted, unless Keep Files is on).</div>
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="KeepFilesAfterEviction" />
+                        <span>Keep transcoded files after eviction</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">When enabled, output MP4 files are not deleted when jobs are evicted.</div>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="HardwareAcceleration">Hardware Acceleration</label>
+                    <select is="emby-select" id="HardwareAcceleration">
+                        <option value="None">None (CPU / software)</option>
+                        <option value="Nvenc">NVENC (NVIDIA GPU)</option>
+                        <option value="Qsv">Quick Sync (Intel GPU)</option>
+                        <option value="Vaapi">VA-API (Linux)</option>
+                        <option value="VideoToolbox">VideoToolbox (Apple / macOS)</option>
+                        <option value="Amf">AMF (AMD GPU)</option>
+                    </select>
+                    <div class="fieldDescription">Hardware encoders are typically 10&#x2013;25&times; faster than software. Ensure the GPU and its drivers are accessible to ffmpeg.</div>
+                </div>
+
+                <div class="inputContainer" id="VaapiDeviceRow">
+                    <label class="inputLabel inputLabelUnfocused" for="VaapiDevice">VA-API Device</label>
+                    <input is="emby-input" type="text" id="VaapiDevice" />
+                    <div class="fieldDescription">VA-API render node path, e.g. /dev/dri/renderD128. Only used when Hardware Acceleration is set to VA-API.</div>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Save</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var pluginId = '3c4b5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e';
+
+            function updateVaapiRow() {
+                var val = document.getElementById('HardwareAcceleration').value;
+                document.getElementById('VaapiDeviceRow').style.display = (val === 'Vaapi') ? '' : 'none';
+            }
+
+            document.getElementById('TranscodeDownloadConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    document.getElementById('MaxConcurrentJobs').value        = config.MaxConcurrentJobs   !== undefined ? config.MaxConcurrentJobs   : 2;
+                    document.getElementById('OutputDirectory').value          = config.OutputDirectory     || '';
+                    document.getElementById('JobRetentionMinutes').value      = config.JobRetentionMinutes !== undefined ? config.JobRetentionMinutes : 60;
+                    document.getElementById('KeepFilesAfterEviction').checked = !!config.KeepFilesAfterEviction;
+                    var hwVal = config.HardwareAcceleration;
+                    if (typeof hwVal === 'number') {
+                        hwVal = ['None','Nvenc','Qsv','Vaapi','VideoToolbox','Amf'][hwVal] || 'None';
+                    }
+                    document.getElementById('HardwareAcceleration').value = hwVal || 'None';
+                    document.getElementById('VaapiDevice').value              = config.VaapiDevice || '/dev/dri/renderD128';
+                    updateVaapiRow();
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.getElementById('HardwareAcceleration').addEventListener('change', updateVaapiRow);
+
+            document.getElementById('TranscodeDownloadConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                var config = {
+                    MaxConcurrentJobs:      parseInt(document.getElementById('MaxConcurrentJobs').value, 10) || 2,
+                    OutputDirectory:        document.getElementById('OutputDirectory').value.trim() || null,
+                    JobRetentionMinutes:    parseInt(document.getElementById('JobRetentionMinutes').value, 10) || 60,
+                    KeepFilesAfterEviction: document.getElementById('KeepFilesAfterEviction').checked,
+                    HardwareAcceleration:   document.getElementById('HardwareAcceleration').value,
+                    VaapiDevice:            document.getElementById('VaapiDevice').value.trim() || '/dev/dri/renderD128'
+                };
+                ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
+                    Dashboard.processPluginConfigurationUpdateResult();
+                });
+            });
+        })();
+    </script>
+
+</div>
+</body>
+</html>

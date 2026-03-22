@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Deploy Jellyfin plugin via SCP",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail\ndotnet build -c Release\nPLUGIN_DIR=\"/var/lib/jellyfin/plugins/TranscodeDownload_1.0.0.0\"\nTMP_DIR=\"/tmp/TranscodeDownload_1.0.0.0\"\nssh jellyfin \"mkdir -p ${TMP_DIR}\"\nscp bin/Release/net9.0/Jellyfin.Plugin.TranscodeDownload.dll bin/Release/net9.0/meta.json jellyfin:${TMP_DIR}/\nssh -tt jellyfin \"sudo mkdir -p ${PLUGIN_DIR} && sudo mv ${TMP_DIR}/Jellyfin.Plugin.TranscodeDownload.dll ${PLUGIN_DIR}/ && sudo mv ${TMP_DIR}/meta.json ${PLUGIN_DIR}/ && sudo chown -R jellyfin:jellyfin ${PLUGIN_DIR} && rm -rf ${TMP_DIR}\"\necho Upload complete to jellyfin:${PLUGIN_DIR}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy + Restart Jellyfin + Show Logs",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail\ndotnet build -c Release\nPLUGIN_DIR=\"/var/lib/jellyfin/plugins/TranscodeDownload_1.0.0.0\"\nTMP_DIR=\"/tmp/TranscodeDownload_1.0.0.0\"\nssh jellyfin \"mkdir -p ${TMP_DIR}\"\nscp bin/Release/net9.0/Jellyfin.Plugin.TranscodeDownload.dll bin/Release/net9.0/meta.json jellyfin:${TMP_DIR}/\nssh -tt jellyfin \"sudo mkdir -p ${PLUGIN_DIR} && sudo mv ${TMP_DIR}/Jellyfin.Plugin.TranscodeDownload.dll ${PLUGIN_DIR}/ && sudo mv ${TMP_DIR}/meta.json ${PLUGIN_DIR}/ && sudo chown -R jellyfin:jellyfin ${PLUGIN_DIR} && rm -rf ${TMP_DIR} && sudo systemctl restart jellyfin && sleep 2 && sudo journalctl -u jellyfin -n 120 --no-pager | grep -Ei -e TranscodeDownload -e plugin -e exception -e error || true\"\necho Deploy/restart/log check complete."
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

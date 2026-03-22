@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Version>1.0.0.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Jellyfin.Plugin.TranscodeDownload</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.TranscodeDownload</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      Pin this to the Jellyfin server version you are deploying against.
+      Packages are published to the Jellyfin GitHub NuGet feed — see nuget.config.
+    -->
+    <JellyfinVersion>10.11.0</JellyfinVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core Jellyfin plugin contracts: ILibraryManager, IMediaEncoder, ITranscodeManager, etc. -->
+    <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinVersion)" />
+    <!-- Common contracts: IPluginServiceRegistrator, BasePlugin, IApplicationPaths, etc. -->
+    <PackageReference Include="Jellyfin.Common" Version="$(JellyfinVersion)" />
+    <!-- Model types: MediaSourceInfo, BasePluginConfiguration, etc. -->
+    <PackageReference Include="Jellyfin.Model" Version="$(JellyfinVersion)" />
+    <!-- ASP.NET Core — provided by the Jellyfin host at runtime, never copied to output -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy meta.json to build output so it can be deployed alongside the DLL -->
+    <None Include="meta.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Configuration page served by the Jellyfin dashboard -->
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/bin/Debug/net8.0/meta.json
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/bin/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.deps.json
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/bin/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.dll
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/bin/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.pdb
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.csproj.AssemblyReference.cache
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.GeneratedMSBuildEditorConfig.editorconfig
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.AssemblyInfoInputs.cache
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.AssemblyInfo.cs
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.csproj.CoreCompileInputs.cache
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.dll
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/refint/Jellyfin.Plugin.TranscodeDownload.dll
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/Jellyfin.Plugin.TranscodeDownload.pdb
+/home/david/Drive/Projects/Jellyfin/Download transcoded/Jellyfin.Plugin.TranscodeDownload/obj/Debug/net8.0/ref/Jellyfin.Plugin.TranscodeDownload.dll
