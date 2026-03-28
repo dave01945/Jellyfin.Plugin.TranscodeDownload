@@ -515,7 +515,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
 
         if (videoEncoder != "copy")
         {
-            AddVideoPreset(args, videoEncoder, hwAccel);
+            AddVideoPreset(args, videoEncoder, hwAccel, req.SpeedPreset);
             AddVideoQuality(args, req, hwAccel, videoEncoder);
         }
 
@@ -613,27 +613,94 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
     };
 
     /// <summary>Adds encoder preset flag(s). Each backend uses a different flag name/vocabulary.</summary>
-    private static void AddVideoPreset(ICollection<string> args, string videoEncoder, HardwareAccelMode hwAccel)
+    private static void AddVideoPreset(
+        ICollection<string> args,
+        string videoEncoder,
+        HardwareAccelMode hwAccel,
+        Models.SpeedPreset speedPreset)
     {
         switch (hwAccel)
         {
             case HardwareAccelMode.None:
                 // libvpx-vp9 does not accept -preset.
                 if (videoEncoder != "libvpx-vp9")
-                    { args.Add("-preset"); args.Add("superfast"); }
+                {
+                    args.Add("-preset");
+                    args.Add(speedPreset switch
+                    {
+                        Models.SpeedPreset.Fastest  => "ultrafast",
+                        Models.SpeedPreset.VeryFast => "veryfast",
+                        Models.SpeedPreset.Fast     => "fast",
+                        Models.SpeedPreset.Medium   => "medium",
+                        Models.SpeedPreset.Slow     => "slow",
+                        Models.SpeedPreset.VerySlow => "veryslow",
+                        _                           => "superfast",  // Default
+                    });
+                }
                 break;
+
             case HardwareAccelMode.Nvenc:
-                // NVENC: p1 (fastest) … p7 (slowest). "fast" is an alias for p4.
-                args.Add("-preset"); args.Add("fast");
+                // NVENC: p1 (fastest) … p7 (slowest/best). "fast" is an alias for p4.
+                args.Add("-preset");
+                args.Add(speedPreset switch
+                {
+                    Models.SpeedPreset.Fastest  => "p1",
+                    Models.SpeedPreset.VeryFast => "p2",
+                    Models.SpeedPreset.Fast     => "p4",
+                    Models.SpeedPreset.Medium   => "p5",
+                    Models.SpeedPreset.Slow     => "p6",
+                    Models.SpeedPreset.VerySlow => "p7",
+                    _                           => "fast",  // Default (p4 alias)
+                });
                 break;
+
             case HardwareAccelMode.Qsv:
-                args.Add("-preset"); args.Add("veryfast");
+                args.Add("-preset");
+                args.Add(speedPreset switch
+                {
+                    Models.SpeedPreset.Fastest  => "veryfast",
+                    Models.SpeedPreset.VeryFast => "veryfast",
+                    Models.SpeedPreset.Fast     => "fast",
+                    Models.SpeedPreset.Medium   => "medium",
+                    Models.SpeedPreset.Slow     => "slow",
+                    Models.SpeedPreset.VerySlow => "veryslow",
+                    _                           => "veryfast",  // Default
+                });
                 break;
+
             case HardwareAccelMode.Amf:
                 // AMF quality tiers: speed / balanced / quality
-                args.Add("-quality"); args.Add("speed");
+                args.Add("-quality");
+                args.Add(speedPreset switch
+                {
+                    Models.SpeedPreset.Medium   => "balanced",
+                    Models.SpeedPreset.Slow     => "quality",
+                    Models.SpeedPreset.VerySlow => "quality",
+                    _                           => "speed",  // Default / Fastest / VeryFast / Fast
+                });
                 break;
-            // Vaapi and VideoToolbox have no meaningful -preset.
+
+            case HardwareAccelMode.Vaapi:
+                // VAAPI -quality: 0 = best quality/slowest … 7 = fastest. Driver-dependent range.
+                // Default omits the flag entirely so the driver chooses.
+                var vaapiQuality = speedPreset switch
+                {
+                    Models.SpeedPreset.Fastest  => 7,
+                    Models.SpeedPreset.VeryFast => 6,
+                    Models.SpeedPreset.Fast     => 5,
+                    Models.SpeedPreset.Medium   => 3,
+                    Models.SpeedPreset.Slow     => 1,
+                    Models.SpeedPreset.VerySlow => 0,
+                    _                           => -1,  // Default: omit
+                };
+                if (vaapiQuality >= 0)
+                {
+                    args.Add("-quality");
+                    args.Add(vaapiQuality.ToString());
+                }
+                break;
+
+            // VideoToolbox has no meaningful -preset.
         }
     }
 

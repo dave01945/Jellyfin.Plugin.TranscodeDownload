@@ -3,6 +3,30 @@ using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.TranscodeDownload.Models;
 
+/// <summary>
+/// Encoder speed preset controlling the trade-off between encode speed and compression efficiency.
+/// Maps to <c>-preset</c> (software/NVENC/QSV), <c>-quality</c> (AMF), or <c>-quality</c> integer (VAAPI).
+/// VideoToolbox has no equivalent flag and is unaffected.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum SpeedPreset
+{
+    /// <summary>Use the built-in per-backend default (current behavior).</summary>
+    Default,
+    /// <summary>Fastest encode, largest file. Software: ultrafast · NVENC: p1 · QSV: veryfast · AMF/VAAPI: fastest.</summary>
+    Fastest,
+    /// <summary>Software: veryfast · NVENC: p2 · QSV: veryfast · AMF: speed · VAAPI: 6.</summary>
+    VeryFast,
+    /// <summary>Software: fast · NVENC: p4 · QSV: fast · AMF: speed · VAAPI: 5.</summary>
+    Fast,
+    /// <summary>Balanced encode. Software: medium · NVENC: p5 · QSV: medium · AMF: balanced · VAAPI: 3.</summary>
+    Medium,
+    /// <summary>Better compression, slower. Software: slow · NVENC: p6 · QSV: slow · AMF/VAAPI: quality.</summary>
+    Slow,
+    /// <summary>Best compression. Software: veryslow · NVENC: p7 · QSV: veryslow · AMF/VAAPI: best quality.</summary>
+    VerySlow,
+}
+
 /// <summary>Named quality presets. When set to anything other than <see cref="Custom"/>, overrides <see cref="CreateJobRequest.Crf"/>.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum QualityPreset
@@ -53,6 +77,13 @@ public sealed class CreateJobRequest
     /// Has no effect when <see cref="VideoBitrate"/> is set.
     /// </summary>
     public QualityPreset Preset { get; set; } = QualityPreset.Custom;
+
+    /// <summary>
+    /// Encoder speed preset. Controls the encode speed / compression trade-off via ffmpeg's
+    /// <c>-preset</c> (software/NVENC/QSV), <c>-quality</c> (AMF), or <c>-quality</c> integer (VAAPI).
+    /// <see cref="SpeedPreset.Default"/> preserves the per-backend built-in default.
+    /// </summary>
+    public SpeedPreset SpeedPreset { get; set; } = SpeedPreset.Default;
 
     /// <summary>Maximum output width in pixels. Aspect ratio is preserved. Null = source width.</summary>
     public int? MaxWidth { get; set; }
