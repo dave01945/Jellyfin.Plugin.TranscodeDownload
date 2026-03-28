@@ -101,6 +101,26 @@ public sealed class CreateJobRequest
     public int AudioBitrate { get; set; } = 128_000;
 
     /// <summary>
+    /// When true, audio is encoded in VBR mode using the codec's native quality parameter.
+    /// <list type="bullet">
+    ///   <item><description>aac — <c>-vbr 1–5</c> (derived from <see cref="AudioBitrate"/>; replaces <c>-b:a</c>).</description></item>
+    ///   <item><description>libmp3lame — <c>-q:a 0–9</c> (0 = best; derived from <see cref="AudioBitrate"/>; replaces <c>-b:a</c>).</description></item>
+    ///   <item><description>libopus — <c>-vbr on</c> with <c>-b:a</c> used as a target bitrate.</description></item>
+    ///   <item><description>flac — lossless; flag has no effect.</description></item>
+    /// </list>
+    /// Default false (CBR) for backward compatibility.
+    /// </summary>
+    public bool AudioVbr { get; set; } = false;
+
+    /// <summary>
+    /// When true and <see cref="VideoBitrate"/> is set, uses constrained-VBR mode:
+    /// <c>-b:v</c> (target), <c>-maxrate</c> (1.5× target), <c>-bufsize</c> (2× target).
+    /// Has no effect when <see cref="VideoBitrate"/> is null (CRF mode is already VBR).
+    /// Default false for backward compatibility.
+    /// </summary>
+    public bool VideoVbr { get; set; } = false;
+
+    /// <summary>
     /// Output audio channel count. Null = keep the source channel layout.
     /// Common values: 1 (mono), 2 (stereo), 6 (5.1 surround), 8 (7.1 surround).
     /// </summary>

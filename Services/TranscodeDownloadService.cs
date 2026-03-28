@@ -536,7 +536,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
 
         if (audioEncoder != "copy")
         {
-            args.Add("-b:a"); args.Add(req.AudioBitrate.ToString());
+            AddAudioBitrateArgs(args, audioEncoder, req.AudioBitrate, req.AudioVbr);
 
             if (req.AudioChannels.HasValue)
             {
@@ -611,6 +611,68 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         Models.QualityPreset.VeryHigh => 15,
         _                             => req.Crf,  // Custom — use explicit value
     };
+
+    /// <summary>
+    /// Adds the appropriate audio bitrate/quality arguments based on VBR mode.
+    /// </summary>
+    private static void AddAudioBitrateArgs(
+        ICollection<string> args,
+        string audioEncoder,
+        int audioBitrate,
+        bool vbr)
+    {
+        if (!vbr)
+        {
+            args.Add("-b:a"); args.Add(audioBitrate.ToString());
+            return;
+        }
+
+        switch (audioEncoder)
+        {
+            case "aac":
+                // Native FFmpeg AAC VBR: -vbr 1 (lowest) … 5 (highest quality).
+                // Map the target bitrate to a quality level.
+                var aacQ = audioBitrate switch
+                {
+                    <= 64_000  => 1,
+                    <= 96_000  => 2,
+                    <= 128_000 => 3,
+                    <= 192_000 => 4,
+                    _          => 5,
+                };
+                args.Add("-vbr"); args.Add(aacQ.ToString());
+                break;
+
+            case "libmp3lame":
+                // LAME VBR: -q:a 0 (best, ~245 kbps) … 9 (worst, ~45 kbps).
+                var mp3Q = audioBitrate switch
+                {
+                    >= 245_000 => 0,
+                    >= 225_000 => 1,
+                    >= 190_000 => 2,
+                    >= 175_000 => 3,
+                    >= 165_000 => 4,
+                    >= 130_000 => 5,
+                    >= 115_000 => 6,
+                    >= 100_000 => 7,
+                    >=  85_000 => 8,
+                    _          => 9,
+                };
+                args.Add("-q:a"); args.Add(mp3Q.ToString());
+                break;
+
+            case "libopus":
+                // Opus defaults to VBR; be explicit and keep -b:a as the target.
+                args.Add("-vbr"); args.Add("on");
+                args.Add("-b:a"); args.Add(audioBitrate.ToString());
+                break;
+
+            default:
+                // flac (lossless) and any unknown encoder: fall back to -b:a.
+                args.Add("-b:a"); args.Add(audioBitrate.ToString());
+                break;
+        }
+    }
 
     /// <summary>Adds encoder preset flag(s). Each backend uses a different flag name/vocabulary.</summary>
     private static void AddVideoPreset(
@@ -718,6 +780,14 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         if (req.VideoBitrate.HasValue)
         {
             args.Add("-b:v"); args.Add(req.VideoBitrate.Value.ToString());
+            if (req.VideoVbr)
+            {
+                // Constrained-VBR: allow bursts up to 1.5× target with a 2× buffer.
+                var maxRate = (long)(req.VideoBitrate.Value * 1.5);
+                var bufSize = req.VideoBitrate.Value * 2L;
+                args.Add("-maxrate"); args.Add(maxRate.ToString());
+                args.Add("-bufsize"); args.Add(bufSize.ToString());
+            }
             return;
         }
 
