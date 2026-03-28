@@ -537,6 +537,11 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         if (audioEncoder != "copy")
         {
             args.Add("-b:a"); args.Add(req.AudioBitrate.ToString());
+
+            if (req.AudioChannels.HasValue)
+            {
+                args.Add("-ac"); args.Add(req.AudioChannels.Value.ToString());
+            }
         }
 
         // ── Stream mapping ────────────────────────────────────────────────────
@@ -597,6 +602,16 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         };
     }
 
+    /// <summary>Resolves the effective CRF from the request, applying the named preset when set.</summary>
+    private static int ResolveCrf(CreateJobRequest req) => req.Preset switch
+    {
+        Models.QualityPreset.Low      => 28,
+        Models.QualityPreset.Medium   => 23,
+        Models.QualityPreset.High     => 18,
+        Models.QualityPreset.VeryHigh => 15,
+        _                             => req.Crf,  // Custom — use explicit value
+    };
+
     /// <summary>Adds encoder preset flag(s). Each backend uses a different flag name/vocabulary.</summary>
     private static void AddVideoPreset(ICollection<string> args, string videoEncoder, HardwareAccelMode hwAccel)
     {
@@ -639,23 +654,25 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
             return;
         }
 
+        var crf = ResolveCrf(req);
+
         switch (hwAccel)
         {
             case HardwareAccelMode.Nvenc:
                 // -cq: Constant Quality mode (0 = auto, 1–51 similar to CRF scale).
-                args.Add("-cq"); args.Add(req.Crf.ToString());
+                args.Add("-cq"); args.Add(crf.ToString());
                 break;
             case HardwareAccelMode.Qsv:
                 // -global_quality: ICQ (Intelligent Constant Quality) — lower = better.
-                args.Add("-global_quality"); args.Add(req.Crf.ToString());
+                args.Add("-global_quality"); args.Add(crf.ToString());
                 break;
             case HardwareAccelMode.Vaapi:
                 // -qp: Quantisation parameter (0–52, lower = better quality).
-                args.Add("-qp"); args.Add(req.Crf.ToString());
+                args.Add("-qp"); args.Add(crf.ToString());
                 break;
             case HardwareAccelMode.Amf:
                 // AMF constant-QP mode: set I/P/B frame quantisers independently.
-                var qp = req.Crf.ToString();
+                var qp = crf.ToString();
                 args.Add("-rc"); args.Add("cqp");
                 args.Add("-qp_i"); args.Add(qp);
                 args.Add("-qp_p"); args.Add(qp);
@@ -668,12 +685,12 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
                 if (videoEncoder == "libvpx-vp9")
                 {
                     // VP9 quality mode: -crf sets quality, -b:v 0 switches to constrained-quality.
-                    args.Add("-crf"); args.Add(req.Crf.ToString());
+                    args.Add("-crf"); args.Add(crf.ToString());
                     args.Add("-b:v"); args.Add("0");
                 }
                 else
                 {
-                    args.Add("-crf"); args.Add(req.Crf.ToString());
+                    args.Add("-crf"); args.Add(crf.ToString());
                 }
                 break;
         }

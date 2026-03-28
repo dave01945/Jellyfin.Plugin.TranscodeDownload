@@ -112,7 +112,7 @@ public sealed class TranscodeDownloadController : ControllerBase
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public IActionResult DownloadFile(Guid id)
+    public IActionResult DownloadFile(Guid id, [FromQuery] string? name = null)
     {
         if (!_service.TryGetOutputInfo(id, out var path, out var state))
             return NotFound();
@@ -126,12 +126,7 @@ public sealed class TranscodeDownloadController : ControllerBase
                     state = state.ToString(),
                 }),
 
-            DownloadJobState.Completed =>
-                // enableRangeProcessing: true — lets the client resume interrupted downloads
-                // and skip to any position without re-downloading from the beginning.
-                PhysicalFile(path!, GetContentType(path!),
-                    fileDownloadName: Path.GetFileName(path!),
-                    enableRangeProcessing: true),
+            DownloadJobState.Completed => BuildCompletedFileResponse(id, path, name),
 
             _ => // Failed, Cancelled
                 StatusCode(StatusCodes.Status409Conflict, new
@@ -152,6 +147,82 @@ public sealed class TranscodeDownloadController : ControllerBase
             ".avi"  => "video/x-msvideo",
             _       => "video/mp4",
         };
+
+    private IActionResult BuildCompletedFileResponse(Guid id, string? path, string? requestedName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return NotFound(new
+            {
+                message = "Output file path is missing for completed job.",
+                state = DownloadJobState.Completed.ToString(),
+            });
+        }
+
+        if (!System.IO.File.Exists(path))
+        {
+            return NotFound(new
+            {
+                message = "Transcoded file no longer exists on disk.",
+                state = DownloadJobState.Completed.ToString(),
+            });
+        }
+
+        try
+        {
+            // enableRangeProcessing: true — lets the client resume interrupted downloads
+            // and skip to any position without re-downloading from the beginning.
+            // Prefer the media title for Content-Disposition filename instead of the
+            // internal GUID output path.
+            return PhysicalFile(path, GetContentType(path),
+                fileDownloadName: BuildDownloadFileName(requestedName ?? _service.GetJob(id)?.ItemName, path),
+                enableRangeProcessing: true);
+        }
+        catch
+        {
+            // Final safety fallback: still return the file with a basic name.
+            return PhysicalFile(path, GetContentType(path),
+                fileDownloadName: Path.GetFileName(path),
+                enableRangeProcessing: true);
+        }
+    }
+
+    private static string BuildDownloadFileName(string? itemName, string outputPath)
+    {
+        try
+        {
+            var extension = Path.GetExtension(outputPath);
+            var fallback = Path.GetFileNameWithoutExtension(outputPath);
+            var baseName = string.IsNullOrWhiteSpace(itemName) ? fallback : itemName.Trim();
+
+            // Avoid duplicate extension when caller already provides one.
+            if (!string.IsNullOrEmpty(extension) &&
+                baseName.EndsWith(extension, StringComparison.OrdinalIgnoreCase) &&
+                baseName.Length >= extension.Length)
+            {
+                baseName = baseName[..^extension.Length];
+            }
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = baseName.ToCharArray();
+            for (var i = 0; i < chars.Length; i++)
+            {
+                if (invalid.Contains(chars[i]))
+                    chars[i] = '_';
+            }
+
+            var cleaned = new string(chars).Trim();
+            if (string.IsNullOrWhiteSpace(cleaned))
+                cleaned = fallback;
+
+            return $"{cleaned}{extension}";
+        }
+        catch
+        {
+            // Never fail the download because of filename shaping.
+            return Path.GetFileName(outputPath);
+        }
+    }
 
     // ── DELETE /Plugins/TranscodeDownload/jobs/{id} ───────────────────────────
 

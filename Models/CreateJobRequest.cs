@@ -1,6 +1,23 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.TranscodeDownload.Models;
+
+/// <summary>Named quality presets. When set to anything other than <see cref="Custom"/>, overrides <see cref="CreateJobRequest.Crf"/>.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum QualityPreset
+{
+    /// <summary>Use explicit <see cref="CreateJobRequest.Crf"/> or <see cref="CreateJobRequest.VideoBitrate"/> values.</summary>
+    Custom,
+    /// <summary>Low quality — smallest file. Maps to CRF 28.</summary>
+    Low,
+    /// <summary>Balanced quality. Maps to CRF 23.</summary>
+    Medium,
+    /// <summary>High quality. Maps to CRF 18.</summary>
+    High,
+    /// <summary>Very high quality — near lossless for most content. Maps to CRF 15.</summary>
+    VeryHigh,
+}
 
 /// <summary>POST /Plugins/TranscodeDownload/jobs request body.</summary>
 public sealed class CreateJobRequest
@@ -30,6 +47,13 @@ public sealed class CreateJobRequest
     [Range(0, 51)]
     public int Crf { get; set; } = 23;
 
+    /// <summary>
+    /// Named quality preset. When set to anything other than <see cref="QualityPreset.Custom"/>,
+    /// overrides <see cref="Crf"/> with a sensible default for the chosen tier.
+    /// Has no effect when <see cref="VideoBitrate"/> is set.
+    /// </summary>
+    public QualityPreset Preset { get; set; } = QualityPreset.Custom;
+
     /// <summary>Maximum output width in pixels. Aspect ratio is preserved. Null = source width.</summary>
     public int? MaxWidth { get; set; }
 
@@ -44,6 +68,13 @@ public sealed class CreateJobRequest
     /// <summary>Audio bitrate in bits per second. Default 128 kbps.</summary>
     [Range(8_000, 640_000)]
     public int AudioBitrate { get; set; } = 128_000;
+
+    /// <summary>
+    /// Output audio channel count. Null = keep the source channel layout.
+    /// Common values: 1 (mono), 2 (stereo), 6 (5.1 surround), 8 (7.1 surround).
+    /// </summary>
+    [Range(1, 8)]
+    public int? AudioChannels { get; set; }
 
     /// <summary>
     /// Zero-based audio stream index within the source file.

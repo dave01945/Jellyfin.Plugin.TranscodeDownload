@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("dave01945")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0.0+b4ea090fe3626aee7d05ebb249603005eec4bcd3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0.0+72a52bb44a3433cbb54011a40bb5a9328b1e8eca")]
 [assembly: System.Reflection.AssemblyProductAttribute("Jellyfin.Plugin.TranscodeDownload")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Jellyfin.Plugin.TranscodeDownload")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
