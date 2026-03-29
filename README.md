@@ -179,3 +179,23 @@ Responses:
 - Config model/UI: `Configuration/PluginConfiguration.cs`, `Configuration/configPage.html`
 
 If restore fails on Jellyfin package feeds, verify credentials/configuration in `nuget.config`.
+
+## Secret Scanning
+
+This repository now includes secret scanning with gitleaks in both local commits and CI:
+
+- Local pre-commit hook via `.pre-commit-config.yaml` (scans staged changes).
+- CI workflow: `.github/workflows/secret-scan.yml` (scans full git history on `push` to `main` and on `pull_request`).
+
+To enable local commit scanning:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+To run a full local scan manually:
+
+```bash
+docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest git /repo --redact --verbose
+```

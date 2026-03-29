@@ -1,0 +1,3 @@
+gitleaks-report.sarif
+bin/
+obj/
