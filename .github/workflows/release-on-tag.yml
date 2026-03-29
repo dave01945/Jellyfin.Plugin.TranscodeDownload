@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   release:
@@ -20,6 +21,24 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+
+      - name: Configure Jellyfin NuGet feed auth
+        env:
+          JELLYFIN_NUGET_USERNAME: ${{ secrets.JELLYFIN_NUGET_USERNAME }}
+          JELLYFIN_NUGET_TOKEN: ${{ secrets.JELLYFIN_NUGET_TOKEN }}
+        run: |
+          if [ -z "${JELLYFIN_NUGET_USERNAME}" ] || [ -z "${JELLYFIN_NUGET_TOKEN}" ]; then
+            echo "Missing required secrets: JELLYFIN_NUGET_USERNAME and JELLYFIN_NUGET_TOKEN"
+            echo "Create a PAT with read:packages scope, then add both secrets in repo settings."
+            exit 1
+          fi
+
+          dotnet nuget remove source jellyfin || true
+          dotnet nuget add source https://nuget.pkg.github.com/jellyfin/index.json \
+            --name jellyfin \
+            --username "${JELLYFIN_NUGET_USERNAME}" \
+            --password "${JELLYFIN_NUGET_TOKEN}" \
+            --store-password-in-clear-text
 
       - name: Restore
         run: dotnet restore
