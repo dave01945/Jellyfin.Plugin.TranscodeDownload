@@ -510,10 +510,11 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
 
         // ── Video ─────────────────────────────────────────────────────────────
 
-        var videoEncoder = ResolveVideoEncoder(req.VideoCodec, hwAccel);
+        var shouldCopyVideo = string.Equals(req.VideoCodec, "copy", StringComparison.OrdinalIgnoreCase);
+        var videoEncoder = shouldCopyVideo ? "copy" : ResolveVideoEncoder(req.VideoCodec, hwAccel);
         args.Add("-c:v"); args.Add(videoEncoder);
 
-        if (videoEncoder != "copy")
+        if (!shouldCopyVideo)
         {
             AddVideoPreset(args, videoEncoder, hwAccel, req.SpeedPreset);
             AddVideoQuality(args, req, hwAccel, videoEncoder);
@@ -538,10 +539,9 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         {
             AddAudioBitrateArgs(args, audioEncoder, req.AudioBitrate, req.AudioVbr);
 
-            if (req.AudioChannels.HasValue)
-            {
-                args.Add("-ac"); args.Add(req.AudioChannels.Value.ToString());
-            }
+            // Default to stereo when re-encoding and the caller does not request a channel count.
+            var audioChannels = req.AudioChannels ?? 2;
+            args.Add("-ac"); args.Add(audioChannels.ToString());
         }
 
         // ── Stream mapping ────────────────────────────────────────────────────
@@ -551,7 +551,11 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         if (req.AudioStreamIndex >= 0)
         { args.Add("-map"); args.Add($"0:a:{req.AudioStreamIndex}"); }
         else
-        { args.Add("-map"); args.Add("0:a:0?"); }   // "?" = ok if no audio
+        {
+            // -1 means backend should choose a sane default/best available stream.
+            // ffmpeg with explicit maps does not auto-select, so pick the first optional audio stream.
+            args.Add("-map"); args.Add("0:a:0?");
+        }
 
         // Soft subtitle mux (text-based streams only; mov_text is the MP4 container codec)
         if (req.SubtitleStreamIndex >= 0)
@@ -618,9 +622,11 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
     private static void AddAudioBitrateArgs(
         ICollection<string> args,
         string audioEncoder,
-        int audioBitrate,
+        int? requestedAudioBitrate,
         bool vbr)
     {
+        var audioBitrate = requestedAudioBitrate.GetValueOrDefault(128_000);
+
         if (!vbr)
         {
             args.Add("-b:a"); args.Add(audioBitrate.ToString());
@@ -685,20 +691,45 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         {
             case HardwareAccelMode.None:
                 // libvpx-vp9 does not accept -preset.
-                if (videoEncoder != "libvpx-vp9")
+                if (videoEncoder == "libvpx-vp9")
                 {
-                    args.Add("-preset");
+                    // VP9 does not support -preset. Map speed to libvpx controls.
+                    args.Add("-quality");
                     args.Add(speedPreset switch
                     {
-                        Models.SpeedPreset.Fastest  => "ultrafast",
-                        Models.SpeedPreset.VeryFast => "veryfast",
-                        Models.SpeedPreset.Fast     => "fast",
-                        Models.SpeedPreset.Medium   => "medium",
-                        Models.SpeedPreset.Slow     => "slow",
-                        Models.SpeedPreset.VerySlow => "veryslow",
-                        _                           => "superfast",  // Default
+                        Models.SpeedPreset.Fastest  => "realtime",
+                        Models.SpeedPreset.VeryFast => "realtime",
+                        Models.SpeedPreset.Fast     => "good",
+                        Models.SpeedPreset.Medium   => "good",
+                        Models.SpeedPreset.Slow     => "good",
+                        Models.SpeedPreset.VerySlow => "best",
+                        _                           => "good", // Default -> medium
                     });
+                    args.Add("-cpu-used");
+                    args.Add(speedPreset switch
+                    {
+                        Models.SpeedPreset.Fastest  => "8",
+                        Models.SpeedPreset.VeryFast => "6",
+                        Models.SpeedPreset.Fast     => "4",
+                        Models.SpeedPreset.Medium   => "3",
+                        Models.SpeedPreset.Slow     => "2",
+                        Models.SpeedPreset.VerySlow => "1",
+                        _                           => "3", // Default -> medium
+                    });
+                    break;
                 }
+
+                args.Add("-preset");
+                args.Add(speedPreset switch
+                {
+                    Models.SpeedPreset.Fastest  => "ultrafast",
+                    Models.SpeedPreset.VeryFast => "veryfast",
+                    Models.SpeedPreset.Fast     => "fast",
+                    Models.SpeedPreset.Medium   => "medium",
+                    Models.SpeedPreset.Slow     => "slow",
+                    Models.SpeedPreset.VerySlow => "veryslow",
+                    _                           => "medium",  // Default
+                });
                 break;
 
             case HardwareAccelMode.Nvenc:
@@ -712,7 +743,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
                     Models.SpeedPreset.Medium   => "p5",
                     Models.SpeedPreset.Slow     => "p6",
                     Models.SpeedPreset.VerySlow => "p7",
-                    _                           => "fast",  // Default (p4 alias)
+                    _                           => "p5",  // Default -> medium
                 });
                 break;
 
@@ -726,7 +757,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
                     Models.SpeedPreset.Medium   => "medium",
                     Models.SpeedPreset.Slow     => "slow",
                     Models.SpeedPreset.VerySlow => "veryslow",
-                    _                           => "veryfast",  // Default
+                    _                           => "medium",  // Default
                 });
                 break;
 
@@ -738,7 +769,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
                     Models.SpeedPreset.Medium   => "balanced",
                     Models.SpeedPreset.Slow     => "quality",
                     Models.SpeedPreset.VerySlow => "quality",
-                    _                           => "speed",  // Default / Fastest / VeryFast / Fast
+                    _                           => "balanced",  // Default -> medium
                 });
                 break;
 
@@ -753,7 +784,7 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
                     Models.SpeedPreset.Medium   => 3,
                     Models.SpeedPreset.Slow     => 1,
                     Models.SpeedPreset.VerySlow => 0,
-                    _                           => -1,  // Default: omit
+                    _                           => 3,  // Default -> medium
                 };
                 if (vaapiQuality >= 0)
                 {
@@ -777,14 +808,31 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         HardwareAccelMode hwAccel,
         string videoEncoder)
     {
-        if (req.VideoBitrate.HasValue)
+        var hasBitrate = req.VideoBitrate.HasValue && req.VideoBitrate.Value > 0;
+        if (hasBitrate)
         {
-            args.Add("-b:v"); args.Add(req.VideoBitrate.Value.ToString());
-            if (req.VideoVbr)
+            var bitrate = req.VideoBitrate!.Value;
+            args.Add("-b:v"); args.Add(bitrate.ToString());
+
+            // Preferred mode for software H.264/H.265/VP9: constrained quality
+            // with target bitrate caps for predictable output size.
+            var supportsConstrainedCrf =
+                videoEncoder is "libx264" or "libx265" or "libvpx-vp9";
+
+            if (supportsConstrainedCrf)
             {
-                // Constrained-VBR: allow bursts up to 1.5× target with a 2× buffer.
-                var maxRate = (long)(req.VideoBitrate.Value * 1.5);
-                var bufSize = req.VideoBitrate.Value * 2L;
+                var constrainedCrf = ResolveCrf(req);
+                args.Add("-crf"); args.Add(constrainedCrf.ToString());
+                var maxRate = bitrate;
+                var bufSize = bitrate * 2L;
+                args.Add("-maxrate"); args.Add(maxRate.ToString());
+                args.Add("-bufsize"); args.Add(bufSize.ToString());
+            }
+            else if (req.VideoVbr)
+            {
+                // Back-compat knob for hardware encoders without CRF-equivalent support.
+                var maxRate = bitrate;
+                var bufSize = bitrate * 2L;
                 args.Add("-maxrate"); args.Add(maxRate.ToString());
                 args.Add("-bufsize"); args.Add(bufSize.ToString());
             }
@@ -889,10 +937,28 @@ public sealed class TranscodeDownloadService : ITranscodeDownloadService, IDispo
         // ── Software / other HW backends ─────────────────────────────────────
         if (!needsScale) return;
 
-        var sw = req.MaxWidth?.ToString()  ?? "-1";
-        var sh = req.MaxHeight?.ToString() ?? "-1";
         args.Add("-vf");
-        args.Add($"scale={sw}:{sh}:force_original_aspect_ratio=decrease");
+        args.Add(BuildSoftwareScaleFilter(req.MaxWidth, req.MaxHeight));
+    }
+
+    private static string BuildSoftwareScaleFilter(int? maxWidth, int? maxHeight)
+    {
+        if (maxWidth.HasValue && maxHeight.HasValue)
+        {
+            return $"scale=w='min(iw,{maxWidth.Value})':h='min(ih,{maxHeight.Value})':force_original_aspect_ratio=decrease";
+        }
+
+        if (maxWidth.HasValue)
+        {
+            return $"scale=w='min(iw,{maxWidth.Value})':h=-2";
+        }
+
+        if (maxHeight.HasValue)
+        {
+            return $"scale=w=-2:h='min(ih,{maxHeight.Value})'";
+        }
+
+        return "scale=w=iw:h=ih";
     }
 
     // ── Eviction ──────────────────────────────────────────────────────────────
